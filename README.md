@@ -1,4 +1,4 @@
-# Spar API Proxy
+# Spar (Secure Proxy for Agent Requests)
 
 Spar is a lightweight, secure API proxy for agentic coding tools. It provides sandboxed access to a mounted codebase (/workspace) for file operations, search, exec, git, and LSP diagnostics. Built with Hono (TypeScript) on Bun for fast, low-memory performance. Binary distribution for easy deployment.
 

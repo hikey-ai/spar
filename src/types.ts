@@ -34,6 +34,7 @@ export interface ApiTypes {
   // Exec
   ExecStartBody: {
     command: string;
+    infinite?: boolean;
     timeout?: number;
   };
   ExecBashBody: {

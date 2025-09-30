@@ -33,10 +33,4 @@
 - JSX: react-jsx mode; support React if used
 - Security: Never log/expose secrets; validate inputs
 
-## Cursor Rules
-From .cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc:
-- Use `bun` for all Node/npm/vite/pnpm tasks
-- Prefer Bun.serve, bun:sqlite, Bun.file over alternatives
-- Testing: `bun test` with import {test, expect} from "bun:test"
-- No dotenv; Bun loads .env automatically
-- For frontend: HTML imports with Bun.serve, no Vite needed
+## Periodically commit your changes locally when you think you have implemented changes asked by user.

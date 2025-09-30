@@ -1,11 +1,13 @@
 import { Hono } from 'hono'
+import type { Context, Next } from 'hono'
 import { handleRequest } from './src/proxy.js'
 import { startWatcher, getRecentChanges } from './src/watcher.js'
+import type { ApiTypes } from './src/types'
 
 const app = new Hono()
 
 // Auth middleware (applied to /proxy/*)
-const authMiddleware = async (c, next) => {
+const authMiddleware = async (c: Context, next: Next) => {
   const auth = c.req.header('Authorization')
   if (auth !== `Bearer ${process.env.API_KEY}`) {
     return c.json({ error: 'Unauthorized' }, 401)
@@ -17,42 +19,42 @@ const authMiddleware = async (c, next) => {
 app.use('/proxy/*', authMiddleware)
 
 // Serve OpenAPI spec
-app.get('/openapi.json', async (c) => {
+app.get('/openapi.json', async (c: Context) => {
   const yaml = await Bun.file('./openapi.yaml').text();
   const spec = JSON.parse(yaml);
   return c.json(spec, 200, { 'Content-Type': 'application/json' });
 })
 
-app.get('/', (c) => c.text('Spar API Proxy'))
+app.get('/', (c: Context) => c.text('Spar API Proxy'))
 
-app.get('/proxy/health', async (c) => {
+app.get('/proxy/health', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
   const result = await handleRequest('health', {}, base)
   return c.json(result)
 })
 
-app.post('/proxy/files/read', async (c) => {
+app.post('/proxy/files/read', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['FilesReadBody']>()
   const result = await handleRequest('files/read', body, base)
   return c.json(result)
 })
 
-app.post('/proxy/files/write', async (c) => {
+app.post('/proxy/files/write', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['FilesWriteBody']>()
   const result = await handleRequest('files/write', body, base)
   return c.json(result)
 })
 
-app.delete('/proxy/files/:path*', async (c) => {
+app.delete('/proxy/files/:path*', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
   const pathParam = c.req.param('path') || ''
   const result = await handleRequest('files/delete', { path: pathParam }, base)
   return c.json(result)
 })
 
-app.get('/proxy/dirs/:path*', async (c) => {
+app.get('/proxy/dirs/:path*', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
   const pathParam = c.req.param('path') || '.'
   const query = c.req.query()
@@ -60,100 +62,100 @@ app.get('/proxy/dirs/:path*', async (c) => {
   return c.json(result)
 })
 
-app.post('/proxy/search/glob', async (c) => {
+app.post('/proxy/search/glob', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['SearchGlobBody']>()
   const ignore = body.ignore || []
   const result = await handleRequest('search/glob', { pattern: body.pattern, path: body.path || base, ignore }, base)
   return c.json(result)
 })
 
-app.post('/proxy/search/grep', async (c) => {
+app.post('/proxy/search/grep', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['SearchGrepBody']>()
   const ignore = body.ignore || []
   const result = await handleRequest('search/grep', { pattern: body.pattern, path: body.path || base, include: body.include, ignore }, base)
   return c.json(result)
 })
 
-app.post('/proxy/exec/start', async (c) => {
+app.post('/proxy/exec/start', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
-  const result = await handleRequest('exec/start', { ...body, infinite: body.infinite }, base)
+  const body = await c.req.json<ApiTypes['ExecStartBody']>()
+  const result = await handleRequest('exec/start', { ...body, infinite: body.infinite ?? false }, base)
   return c.json(result)
 })
 
-app.get('/proxy/exec/:jobId/status', async (c) => {
+app.get('/proxy/exec/:jobId/status', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
   const jobId = c.req.param('jobId')
   const result = await handleRequest('exec/status', { jobId }, base)
   return c.json(result)
 })
 
-app.post('/proxy/exec/:jobId/stop', async (c) => {
+app.post('/proxy/exec/:jobId/stop', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
   const jobId = c.req.param('jobId')
   const result = await handleRequest('exec/stop', { jobId }, base)
   return c.json(result)
 })
 
-app.post('/proxy/exec/bash', async (c) => {
+app.post('/proxy/exec/bash', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['ExecBashBody']>()
   const result = await handleRequest('exec/bash', body, base)
   return c.json(result)
 })
 
-app.get('/proxy/git/status', async (c) => {
+app.get('/proxy/git/status', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
   const result = await handleRequest('git/status', {}, base)
   return c.json(result)
 })
 
-app.post('/proxy/git/diff', async (c) => {
+app.post('/proxy/git/diff', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['GitDiffBody']>()
   const result = await handleRequest('git/diff', body, base)
   return c.json(result)
 })
 
-app.post('/proxy/git/commit', async (c) => {
+app.post('/proxy/git/commit', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['GitCommitBody']>()
   const result = await handleRequest('git/commit', body, base)
   return c.json(result)
 })
 
-app.get('/proxy/git/log', async (c) => {
+app.get('/proxy/git/log', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const query = c.req.query()
-  const result = await handleRequest('git/log', { limit: parseInt(query.limit || '10') }, base)
+  const query = c.req.query() || {}
+  const limit = parseInt(query.limit || '10')
+  const result = await handleRequest('git/log', { limit }, base)
   return c.json(result)
 })
 
-app.post('/proxy/lsp/diagnostics', async (c) => {
+app.post('/proxy/lsp/diagnostics', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['LspDiagnosticsBody']>()
   const result = await handleRequest('lsp/diagnostics', body, base)
   return c.json(result)
 })
 
-app.post('/proxy/lsp/definition', async (c) => {
+app.post('/proxy/lsp/definition', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['LspDefinitionBody']>()
   const result = await handleRequest('lsp/definition', body, base)
   return c.json(result)
 })
 
-app.post('/proxy/lsp/references', async (c) => {
+app.post('/proxy/lsp/references', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
-  const body = await c.req.json()
+  const body = await c.req.json<ApiTypes['LspReferencesBody']>()
   const result = await handleRequest('lsp/references', body, base)
   return c.json(result)
 })
 
-app.get('/proxy/events', async (c) => {
-  const base = process.env.WORKSPACE_PATH || '/workspace'
+app.get('/proxy/events', async (c: Context) => {
   const query = c.req.query()
   const since = parseInt(query.since || '0')
   const changes = getRecentChanges(since)
