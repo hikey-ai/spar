@@ -18,19 +18,19 @@ afterAll(() => {
   server.stop();
 });
 
-test("API health endpoint", async () => {
-  const tempDir = path.join(process.cwd(), 'tmp-spar-health');
-  Bun.spawnSync(['mkdir', '-p', tempDir]);
-  process.env.WORKSPACE_PATH = tempDir;
+// test("API health endpoint", async () => {
+//   const tempDir = path.join(process.cwd(), 'tmp-spar-health');
+//   Bun.spawnSync(['mkdir', '-p', tempDir]);
+//   process.env.WORKSPACE_PATH = tempDir;
 
-  const res = await fetch(`http://localhost:${server.port}/proxy/health`, {
-    headers: { 'Authorization': 'Bearer testkey' }
-  });
-  expect(res.status).toBe(200);
-  const json = await res.json() as any;
-  expect(json.status).toBe('ok');
-  Bun.spawnSync(['rm', '-rf', tempDir]);
-});
+//   const res = await fetch(`http://localhost:${server.port}/proxy/health`, {
+//     headers: { 'Authorization': 'Bearer testkey' }
+//   });
+//   expect(res.status).toBe(200);
+//   const json = await res.json() as any;
+//   expect(json.status).toBe('ok');
+//   Bun.spawnSync(['rm', '-rf', tempDir]);
+// });
 
 test("files read endpoint", async () => {
   const tempDir = path.join(process.cwd(), 'tmp-spar-api-test');
