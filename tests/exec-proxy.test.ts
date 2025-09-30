@@ -37,7 +37,10 @@ test("startExec should start background job", async () => {
   const { jobId } = await startExec('sleep 5', { cwd: mockWorkspace });
   expect(jobId).toBeDefined();
 
-  // Poll status immediately
+  // Small delay to ensure duration > 0
+  await new Promise(r => setTimeout(r, 50));
+
+  // Poll status
   let status = await getExecStatus(jobId);
   expect(status.status).toBe('running');
   expect(status.duration).toBeGreaterThan(0);
@@ -49,14 +52,14 @@ test("startExec should start background job", async () => {
   expect(status.status).toBe('complete');
   expect(status.stdout).toBe('');
   expect(status.exitCode).toBe(0);
-});
+}, 15000);
 
 test("getExecStatus should return partial output for running job", async () => {
   const { startExec, getExecStatus } = await import("../src/exec-proxy.js");
   const { jobId } = await startExec('echo "streaming test" && sleep 5', { cwd: mockWorkspace });
   // Poll after short delay
-  await new Promise(r => setTimeout(r, 1500));
+  await new Promise(r => setTimeout(r, 2000));
   const status = await getExecStatus(jobId);
   expect(status.status).toBe('running');
   expect(status.stdout).toContain('streaming test');
-});
+}, 10000);

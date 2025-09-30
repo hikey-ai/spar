@@ -15,6 +15,7 @@ beforeEach(async () => {
 test("getDiagnostics should return semantic errors", async () => {
   const { getDiagnostics } = await import("../src/lsp.ts");
   const diags = await getDiagnostics(testTsFile, undefined, mockWorkspace);
+  console.dir(diags, { depth: null });
   expect(diags.length).toBeGreaterThan(0);
   expect(diags[0]!.message).toContain("Type 'number' is not assignable to type 'string'");
   expect(diags[0]!.severity).toBe("Error");

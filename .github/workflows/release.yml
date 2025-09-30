@@ -1,0 +1,58 @@
+name: Build and Release Spar Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install dependencies
+      run: bun install
+
+    - name: Build binary
+      run: |
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          bun build index.ts --outdir dist --target bun --outfile spar.exe
+        else
+          bun build index.ts --outdir dist --target bun --outfile spar
+        fi
+
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: spar-${{ matrix.os }}
+        path: dist/spar*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: spar-*
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          spar-ubuntu-latest/spar
+          spar-macos-latest/spar
+          spar-windows-latest/spar.exe
+        draft: false
+        prerelease: false

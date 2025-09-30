@@ -25,10 +25,11 @@ interface Job {
   stderr: string;
   startTime: number;
   endTime?: number;
+  exitCode?: number;
 }
 
 const jobs = new Map<string, Job>();
-let activeJobs = 0;
+let runningJobs = 0;
 const MAX_CONCURRENT = 5;
 
 function createJob(command: string, options: { timeout?: number; cwd?: string } = {}): Job {
@@ -49,16 +50,15 @@ function createJob(command: string, options: { timeout?: number; cwd?: string } 
 
 function cleanupJob(id: string): void {
   jobs.delete(id);
-  activeJobs--;
 }
 
-export async function startExec(command: string, options: { infinite?: boolean; cwd?: string } = {}): Promise<{ jobId: string }> {
-  if (activeJobs >= MAX_CONCURRENT) {
+export async function startExec(command: string, options: { infinite?: boolean; timeout?: number; cwd?: string } = {}): Promise<{ jobId: string }> {
+  if (runningJobs >= MAX_CONCURRENT) {
     throw new Error('Max concurrent jobs reached');
   }
 
   const job = createJob(command, options);
-  activeJobs++;
+  runningJobs++;
 
   const timeout = options.infinite ? undefined : (options.timeout || 120000);
 
@@ -107,16 +107,21 @@ export async function startExec(command: string, options: { infinite?: boolean; 
     })();
 
     proc.exited.then((exitCode) => {
+      job.exitCode = exitCode;
       job.endTime = Date.now();
-      cleanupJob(job.id);
+      job.proc = null;
+      runningJobs--;
     }).catch((error) => {
+      job.exitCode = 1;
       job.stderr += (error as Error).message;
       job.endTime = Date.now();
-      cleanupJob(job.id);
+      job.proc = null;
+      runningJobs--;
     });
 
     return { jobId: job.id };
   } catch (error) {
+    runningJobs--;
     cleanupJob(job.id);
     throw error;
   }
@@ -130,8 +135,6 @@ export async function stopExec(jobId: string): Promise<{ success: boolean; messa
 
   try {
     job.proc.kill();
-    job.endTime = Date.now();
-    cleanupJob(job.id);
     return { success: true };
   } catch (error) {
     return { success: false, message: (error as Error).message };
@@ -149,7 +152,7 @@ export async function getExecStatus(jobId: string): Promise<JobStatus> {
   }
 
   const duration = job.endTime - job.startTime;
-  return { status: 'complete', exitCode: job.proc.exitCode || 0, duration, stdout: job.stdout, stderr: job.stderr };
+  return { status: 'complete', exitCode: job.exitCode ?? 0, duration, stdout: job.stdout, stderr: job.stderr };
 }
 
 export async function runBash(command: string, options: { timeout?: number; cwd?: string } = {}): Promise<ExecResult> {
@@ -175,8 +178,8 @@ export async function runBash(command: string, options: { timeout?: number; cwd?
 // Cleanup old jobs
 setInterval(() => {
   const now = Date.now();
-  for (const [id, job] of jobs) {
-    if (now - job.startTime > 3600000) { // 1h
+  for (const [id, job] of jobs.entries()) {
+    if (job.endTime && now - job.endTime > 3600000) { // 1h for completed jobs
       cleanupJob(id);
     }
   }
