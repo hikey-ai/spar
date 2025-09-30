@@ -16,7 +16,7 @@ Spar is a lightweight, secure API proxy for agentic coding tools. It provides sa
    - Defaults to http://localhost:3000.
    - Set PORT env: `PORT=8080 bun --hot index.ts`.
 
-3. **Build Production Binary**:\n   ```\n   bun build index.ts --outdir dist --target bun --outfile spar\n   ```\n   - Run: `./dist/spar` (or `PORT=8080 ./dist/spar`).\n   - Docker: Build with `docker build -t spar .` and run `docker run -p 3000:3000 -v /path/to/code:/workspace -e API_KEY=yourkey spar` (includes ripgrep for search).
+3. **Build Production Binary**:\n   ```\n   bun build --compile --minify --sourcemap index.ts --outfile spar\n   ```\n   - Run: `./dist/spar` (or `PORT=8080 ./dist/spar`).\n   - Docker: Build with `docker build -t spar .` and run `docker run -p 3000:3000 -v /path/to/code:/workspace -e API_KEY=yourkey spar` (includes ripgrep for search).
 
 4. **Environment Variables**:
    - `API_KEY`: Required for auth (Bearer token on /proxy/* routes).
