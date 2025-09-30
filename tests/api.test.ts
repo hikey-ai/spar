@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { test, expect, beforeAll, afterAll } from "bun:test";
 import path from "path";
 import { tmpdir } from "os";
 import { serve } from "bun";
@@ -6,16 +6,22 @@ import app from "../index.js";
 
 let server: ReturnType<typeof serve>;
 
-test("API health endpoint", async () => {
-  const tempDir = path.join(tmpdir(), 'spar-health');
-  Bun.spawnSync(['mkdir', '-p', tempDir]);
-  process.env.WORKSPACE_PATH = tempDir;
+beforeAll(() => {
   process.env.API_KEY = 'testkey';
-
   server = serve({
     port: 0,
     fetch: app.fetch,
   });
+});
+
+afterAll(() => {
+  server.stop();
+});
+
+test("API health endpoint", async () => {
+  const tempDir = path.join(process.cwd(), 'tmp-spar-health');
+  Bun.spawnSync(['mkdir', '-p', tempDir]);
+  process.env.WORKSPACE_PATH = tempDir;
 
   const res = await fetch(`http://localhost:${server.port}/proxy/health`, {
     headers: { 'Authorization': 'Bearer testkey' }
@@ -27,12 +33,11 @@ test("API health endpoint", async () => {
 });
 
 test("files read endpoint", async () => {
-  const tempDir = path.join(tmpdir(), 'spar-api-test');
+  const tempDir = path.join(process.cwd(), 'tmp-spar-api-test');
   Bun.spawnSync(['mkdir', '-p', tempDir]);
   const testFile = path.join(tempDir, 'test.txt');
   await Bun.write(testFile, 'test content');
   process.env.WORKSPACE_PATH = tempDir;
-  process.env.API_KEY = 'testkey';
 
   const res = await fetch(`http://localhost:${server.port}/proxy/files/read`, {
     method: 'POST',
@@ -49,12 +54,11 @@ test("files read endpoint", async () => {
 });
 
 test("lsp diagnostics endpoint", async () => {
-  const tempDir = path.join(tmpdir(), 'spar-api-lsp');
+  const tempDir = path.join(process.cwd(), 'tmp-spar-api-lsp');
   Bun.spawnSync(['mkdir', '-p', tempDir]);
   const testFile = path.join(tempDir, 'test.ts');
   await Bun.write(testFile, 'let x: string = 1;');
   process.env.WORKSPACE_PATH = tempDir;
-  process.env.API_KEY = 'testkey';
 
   const res = await fetch(`http://localhost:${server.port}/proxy/lsp/diagnostics`, {
     method: 'POST',
@@ -70,8 +74,4 @@ test("lsp diagnostics endpoint", async () => {
   expect(json.length).toBeGreaterThan(0);
   expect(json[0].message).toContain('Type');
   Bun.spawnSync(['rm', '-rf', tempDir]);
-});
-
-test("cleanup", () => {
-  server.stop();
 });
