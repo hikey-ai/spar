@@ -1,12 +1,13 @@
 import { test, expect } from "bun:test";
 import path from "path";
+import { tmpdir } from "os";
 import { serve } from "bun";
 import app from "../index.js";
 
 let server: ReturnType<typeof serve>;
 
 test("API health endpoint", async () => {
-  const tempDir = '/tmp/spar-health';
+  const tempDir = path.join(tmpdir(), 'spar-health');
   Bun.spawnSync(['mkdir', '-p', tempDir]);
   process.env.WORKSPACE_PATH = tempDir;
   process.env.API_KEY = 'testkey';
@@ -26,7 +27,7 @@ test("API health endpoint", async () => {
 });
 
 test("files read endpoint", async () => {
-  const tempDir = '/tmp/spar-api-test';
+  const tempDir = path.join(tmpdir(), 'spar-api-test');
   Bun.spawnSync(['mkdir', '-p', tempDir]);
   const testFile = path.join(tempDir, 'test.txt');
   await Bun.write(testFile, 'test content');
@@ -48,7 +49,7 @@ test("files read endpoint", async () => {
 });
 
 test("lsp diagnostics endpoint", async () => {
-  const tempDir = '/tmp/spar-api-lsp';
+  const tempDir = path.join(tmpdir(), 'spar-api-lsp');
   Bun.spawnSync(['mkdir', '-p', tempDir]);
   const testFile = path.join(tempDir, 'test.ts');
   await Bun.write(testFile, 'let x: string = 1;');
