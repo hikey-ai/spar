@@ -1,7 +1,7 @@
 import path from "path";
 import { readFiles, writeFile, deleteFile, listDir } from "./fs-proxy.js";
 import { glob, grep } from "./search-proxy.js";
-import { startExec, getExecStatus } from "./exec-proxy.js";
+import { startExec, getExecStatus, stopExec, runBash } from "./exec-proxy.js";
 import { getStatus, getDiff, commit, getLog } from "./git-proxy.js";
 import { getDiagnostics, getDefinition, getReferences } from "./lsp.js";
 
@@ -25,7 +25,7 @@ export async function handleRequest(type: string, body: any, base: string = '/wo
     case 'search/grep':
       return await grep(body.pattern, base, body.include, body.ignore || []);
     case 'exec/start':
-      return await startExec(body.command, { infinite: body.infinite, cwd: base });
+      return await startExec(body.command, { infinite: body.infinite, timeout: body.timeout, cwd: base });
     case 'exec/status':
       return await getExecStatus(body.jobId);
     case 'exec/stop':

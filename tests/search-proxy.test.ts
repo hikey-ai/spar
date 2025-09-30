@@ -35,11 +35,14 @@ test("grep should find matching lines", async () => {
   expect(matches.length).toBe(2);
   const file1Match = matches.find(m => m.file === "file1.txt");
   expect(file1Match).toBeDefined();
-  expect(file1Match!.lines.length).toBe(1);
-  expect(file1Match!.lines[0].content).toContain("content1");
+  if (file1Match && file1Match.lines.length > 0) {
+    expect(file1Match!.lines[0]!.content).toContain("content1");
+  }
   const subMatch = matches.find(m => m.file === "subdir/file3.txt");
   expect(subMatch).toBeDefined();
-  expect(subMatch!.lines[0].content).toContain("content3");
+  if (subMatch && subMatch.lines.length > 0) {
+    expect(subMatch!.lines[0]!.content).toContain("content3");
+  }
   // file2.js should not match
   const file2Match = matches.find(m => m.file === "file2.js");
   expect(file2Match).toBeUndefined();

@@ -59,9 +59,8 @@ export async function startExec(command: string, options: { infinite?: boolean; 
 
   const job = createJob(command, options);
   runningJobs++;
-
-  const timeout = options.infinite ? undefined : (options.timeout || 120000);
-
+  const anyOptions = options as any;
+  const timeout = anyOptions.infinite ? undefined : (anyOptions.timeout || 120000);
   try {
     const proc = Bun.spawn(['bash', '-c', command], {
       cwd: options.cwd || '/workspace',
@@ -106,8 +105,8 @@ export async function startExec(command: string, options: { infinite?: boolean; 
       }
     })();
 
-    proc.exited.then((exitCode) => {
-      job.exitCode = exitCode;
+    proc.exited.then((_exitCode) => {
+      job.exitCode = _exitCode;
       job.endTime = Date.now();
       job.proc = null;
       runningJobs--;
@@ -167,12 +166,12 @@ export async function runBash(command: string, options: { timeout?: number; cwd?
 
   const stdout = await new Response(proc.stdout).text();
   const stderr = await new Response(proc.stderr).text();
-  const exitCode = await proc.exited;
+  const _exitCode = await proc.exited;
   const duration = Date.now() - job.startTime;
 
   cleanupJob(job.id);
 
-  return { stdout, stderr, exitCode: exitCode || 0, duration };
+  return { stdout, stderr, exitCode: _exitCode || 0, duration };
 }
 
 // Cleanup old jobs
