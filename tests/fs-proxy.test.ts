@@ -75,3 +75,29 @@ test("listDir should return files and dirs", async () => {
   expect(result.files.length).toBeGreaterThan(0); // At least test.txt
   expect(result.dirs).toContain("subdir");
 });
+
+test("listDir should recursively list files", async () => {
+  const { listDir } = await import("../src/fs-proxy.ts");
+  const subDir = path.join(mockWorkspace, "subdir");
+  Bun.spawnSync(["mkdir", subDir]);
+  const subFile = path.join(subDir, "sub.txt");
+  await Bun.write(subFile, "sub content");
+
+  const result = await listDir(".", mockWorkspace, { recursive: true });
+  expect(result.files).toContain("subdir/sub.txt");
+});
+
+test("listDir should ignore files and dirs", async () => {
+  const { listDir } = await import("../src/fs-proxy.ts");
+  const subDir = path.join(mockWorkspace, "subdir");
+  Bun.spawnSync(["mkdir", subDir]);
+  const subFile = path.join(subDir, "sub.txt");
+  await Bun.write(subFile, "sub content");
+  const ignoredFile = path.join(mockWorkspace, "ignored.txt");
+  await Bun.write(ignoredFile, "ignored content");
+
+  const result = await listDir(".", mockWorkspace, { recursive: true, ignore: ["ignored.txt", "subdir"] });
+  expect(result.files).not.toContain("ignored.txt");
+  expect(result.dirs).not.toContain("subdir");
+  expect(result.files).not.toContain("subdir/sub.txt");
+});

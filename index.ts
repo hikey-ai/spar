@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Context, Next } from 'hono'
 import { handleRequest } from './src/proxy.js'
+import { handleBootstrap, type BootstrapRequest } from './src/bootstrap.js'
 import { startWatcher, getRecentChanges } from './src/watcher.js'
 import type { ApiTypes } from './src/types'
 
@@ -17,6 +18,7 @@ const authMiddleware = async (c: Context, next: Next) => {
 
 // Apply auth to all /proxy routes
 app.use('/proxy/*', authMiddleware)
+app.use('/internal/*', authMiddleware)
 
 // Serve OpenAPI spec
 app.get('/openapi.json', async (c: Context) => {
@@ -26,6 +28,21 @@ app.get('/openapi.json', async (c: Context) => {
 })
 
 app.get('/', (c: Context) => c.text('Spar API Proxy'))
+
+app.post('/internal/bootstrap', async (c: Context) => {
+  const base = process.env.WORKSPACE_PATH || '/workspace'
+  try {
+    const body = await c.req.json<BootstrapRequest>()
+    if (!body.mode) {
+      return c.json({ error: 'mode is required' }, 400)
+    }
+    const result = await handleBootstrap(base, body)
+    return c.json(result)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Bootstrap failed'
+    return c.json({ error: message }, 500)
+  }
+})
 
 app.get('/proxy/health', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
@@ -58,7 +75,8 @@ app.get('/proxy/dirs/:path*', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
   const pathParam = c.req.param('path') || '.'
   const query = c.req.query()
-  const result = await handleRequest('dirs/list', { path: pathParam, options: { recursive: query.recursive === 'true', includeFiles: query.includeFiles !== 'false' } }, base)
+  const ignore = query.ignore ? query.ignore.split(',') : []
+  const result = await handleRequest('dirs/list', { path: pathParam, options: { recursive: query.recursive === 'true', includeFiles: query.includeFiles !== 'false', ignore } }, base)
   return c.json(result)
 })
 
@@ -74,7 +92,13 @@ app.post('/proxy/search/grep', async (c: Context) => {
   const base = process.env.WORKSPACE_PATH || '/workspace'
   const body = await c.req.json<ApiTypes['SearchGrepBody']>()
   const ignore = body.ignore || []
-  const result = await handleRequest('search/grep', { pattern: body.pattern, path: body.path || base, include: body.include, ignore }, base)
+  const options = {
+    caseSensitive: body.caseSensitive,
+    matchString: body.matchString,
+    contextLines: body.contextLines,
+    maxResults: body.maxResults,
+  }
+  const result = await handleRequest('search/grep', { pattern: body.pattern, path: body.path || base, include: body.include, ignore, options }, base)
   return c.json(result)
 })
 
@@ -173,4 +197,4 @@ Bun.serve({
 
 console.log(`Spar API Proxy running on http://localhost:${port}`)
 
-export default app
+export { app }

@@ -79,9 +79,11 @@ export async function deleteFile(p: string, base: string = '/workspace'): Promis
   }
 }
 
-import * as fs from "fs";
+import { Dirent } from "fs";
+import * as fs from "node:fs/promises";
+import { minimatch } from 'minimatch';
 
-export async function listDir(p: string = '.', base: string = '/workspace', options: { recursive?: boolean; includeFiles?: boolean } = {}): Promise<{ files: string[]; dirs: string[] }> {
+export async function listDir(p: string = '.', base: string = '/workspace', options: { recursive?: boolean; includeFiles?: boolean; ignore?: string[] } = {}): Promise<{ files: string[]; dirs: string[] }> {
   let safePath: string;
   if (path.isAbsolute(p)) {
     if (!p.startsWith(base)) {
@@ -94,18 +96,40 @@ export async function listDir(p: string = '.', base: string = '/workspace', opti
       throw new Error('Invalid path');
     }
   }
-  const entries = fs.readdirSync(safePath, { withFileTypes: true });
-  const files: string[] = [];
-  const dirs: string[] = [];
-  for (const entry of entries) {
-    const entryPath = path.join(safePath, entry.name);
-    const rel = path.relative(base, entryPath);
-    if (entry.isDirectory()) {
-      dirs.push(rel);
-    } else if (options.includeFiles !== false) {
-      files.push(rel);
+
+  const allFiles: string[] = [];
+  const allDirs: string[] = [];
+
+  async function walk(currentDir: string) {
+    let entries: Dirent[];
+    try {
+      entries = await fs.readdir(currentDir, { withFileTypes: true });
+    } catch (e) {
+      return;
     }
+
+    const promises = entries.map(async (entry) => {
+      const entryPath = path.join(currentDir, entry.name);
+      const relPath = path.relative(base, entryPath);
+
+      if (options.ignore && options.ignore.some(pattern => minimatch(relPath, pattern))) {
+        return;
+      }
+
+      if (entry.isDirectory()) {
+        allDirs.push(relPath);
+        if (options.recursive) {
+          await walk(entryPath);
+        }
+      } else if (options.includeFiles !== false) {
+        allFiles.push(relPath);
+      }
+    });
+
+    await Promise.all(promises);
   }
-  // For recursive, would need tree walk; stub for now as test uses false
-  return { files, dirs };
+
+  await walk(safePath);
+
+  return { files: allFiles, dirs: allDirs };
 }

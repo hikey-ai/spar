@@ -23,7 +23,7 @@ export async function handleRequest(type: string, body: any, base: string = '/wo
     case 'search/glob':
       return await glob(body.pattern, base, body.ignore || []);
     case 'search/grep':
-      return await grep(body.pattern, base, body.include, body.ignore || []);
+      return await grep(body.pattern, base, body.include, body.ignore || [], body.options || {});
     case 'exec/start':
       return await startExec(body.command, { infinite: body.infinite, timeout: body.timeout, cwd: base });
     case 'exec/status':

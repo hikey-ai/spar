@@ -37,7 +37,18 @@ export async function glob(pattern: string, base: string, ignore: string[] = [])
   return matched.filter(f => !ignore.some(ig => minimatch(f, ig)));
 }
 
-export async function grep(pattern: string, base: string, include: string = '**/*', ignore: string[] = []): Promise<GrepMatch[]> {
+export async function grep(
+  pattern: string,
+  base: string,
+  include: string = '**/*',
+  ignore: string[] = [],
+  options: {
+    caseSensitive?: boolean;
+    matchString?: boolean;
+    contextLines?: number;
+    maxResults?: number;
+  } = {}
+): Promise<GrepMatch[]> {
   const rgArgs = [
     'rg',
     '-n', // line number
@@ -46,6 +57,23 @@ export async function grep(pattern: string, base: string, include: string = '**/
   if (ignore.length > 0) {
     ignore.forEach(ig => rgArgs.push('-g', `!${ig}`));
   }
+
+  if (options.caseSensitive === false) {
+    rgArgs.push('-i');
+  }
+
+  if (options.matchString) {
+    rgArgs.push('-F');
+  }
+
+  if (options.contextLines && options.contextLines > 0) {
+    rgArgs.push('-C', options.contextLines.toString());
+  }
+
+  if (options.maxResults && options.maxResults > 0) {
+    rgArgs.push('-m', options.maxResults.toString());
+  }
+
   rgArgs.push(pattern, base);
 
   const proc = Bun.spawn(rgArgs, { cwd: base, stdout: 'pipe', stderr: 'pipe' });
@@ -59,22 +87,25 @@ export async function grep(pattern: string, base: string, include: string = '**/
 
   const lines = stdout.trim().split('\n');
   const fileMatches = new Map<string, GrepMatch>();
+  const lineRegex = /^([^:]+)(:|-)(\d+)(:|-)(.*)$/;
 
   for (const line of lines) {
-    if (!line) continue;
-    const parts = line.split(':');
-    if (parts.length < 3) continue; // file:line:content
-    const absFile = parts[0]!;
+    if (!line || line === '--') continue;
+    const match = line.match(lineRegex);
+    if (!match) continue;
+
+    const absFile = match[1]!;
+    const lineNumStr = match[3]!;
+    const content = match[5]!;
+    
     const relFile = path.relative(base, absFile);
-    const lineNumStr = parts[1]!;
-    const content = parts.slice(2).join(':');
     const lineNum = parseInt(lineNumStr) - 1;
 
     if (!fileMatches.has(relFile)) {
       fileMatches.set(relFile, { file: relFile, lines: [] });
     }
-    const match = fileMatches.get(relFile)!;
-    match.lines.push({ line: lineNum, content });
+    const fileMatch = fileMatches.get(relFile)!;
+    fileMatch.lines.push({ line: lineNum, content });
   }
 
   return Array.from(fileMatches.values());

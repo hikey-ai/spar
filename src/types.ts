@@ -29,6 +29,10 @@ export interface ApiTypes {
     path?: string;
     include?: string;
     ignore?: string[];
+    caseSensitive?: boolean;
+    matchString?: boolean;
+    contextLines?: number;
+    maxResults?: number;
   };
 
   // Exec

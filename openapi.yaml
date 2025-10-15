@@ -124,6 +124,11 @@ paths:
           schema:
             type: boolean
             default: true
+        - name: ignore
+          in: query
+          schema:
+            type: string
+            description: Comma-separated glob patterns to ignore
       responses:
         '200':
           description: Directory listing
@@ -190,6 +195,14 @@ paths:
                   type: array
                   items:
                     type: string
+                caseSensitive:
+                  type: boolean
+                matchString:
+                  type: boolean
+                contextLines:
+                  type: number
+                maxResults:
+                  type: number
       responses:
         '200':
           description: Matches
@@ -267,6 +280,25 @@ paths:
                     type: number
                   error:
                     type: string
+  /proxy/exec/{jobId}/stop:
+    post:
+      summary: Stop background exec
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
   /proxy/exec/bash:
     post:
       summary: Blocking exec (legacy)

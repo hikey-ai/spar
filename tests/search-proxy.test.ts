@@ -47,3 +47,53 @@ test("grep should find matching lines", async () => {
   const file2Match = matches.find(m => m.file === "file2.js");
   expect(file2Match).toBeUndefined();
 });
+
+test("grep should respect case sensitivity", async () => {
+  const { grep } = await import("../src/search-proxy.ts");
+  await Bun.write(path.join(mockWorkspace, "case.txt"), "CaseSensitive\ncasematters");
+
+  // Case-sensitive (default)
+  let matches = await grep("CaseSensitive", mockWorkspace, '**/*', [], { caseSensitive: true });
+  expect(matches.length).toBe(1);
+  expect(matches[0]!.file).toBe("case.txt");
+
+  // Case-insensitive
+  matches = await grep("casesensitive", mockWorkspace, '**/*', [], { caseSensitive: false });
+  expect(matches.length).toBe(1);
+  expect(matches[0]!.file).toBe("case.txt");
+});
+
+test("grep should handle fixed string matching", async () => {
+  const { grep } = await import("../src/search-proxy.ts");
+  await Bun.write(path.join(mockWorkspace, "fixed.txt"), "search.this");
+
+  // Regex (default)
+  let matches = await grep("search.this", mockWorkspace, '**/*', [], { matchString: false });
+  expect(matches.length).toBe(1);
+
+  // Fixed string
+  matches = await grep("search.this", mockWorkspace, '**/*', [], { matchString: true });
+  expect(matches.length).toBe(1);
+});
+
+test("grep should include context lines", async () => {
+  const { grep } = await import("../src/search-proxy.ts");
+  await Bun.write(path.join(mockWorkspace, "context.txt"), "line1\nline2\nline3");
+
+  const matches = await grep("line2", mockWorkspace, '**/*', [], { contextLines: 1 });
+  expect(matches.length).toBe(1);
+  const fileMatch = matches[0]!;
+  expect(fileMatch.lines.length).toBe(3);
+  expect(fileMatch.lines[0]!.content).toContain("line1");
+  expect(fileMatch.lines[1]!.content).toContain("line2");
+  expect(fileMatch.lines[2]!.content).toContain("line3");
+});
+
+test("grep should respect max results", async () => {
+  const { grep } = await import("../src/search-proxy.ts");
+  await Bun.write(path.join(mockWorkspace, "max.txt"), "a\na\na");
+
+  const matches = await grep("a", mockWorkspace, '**/*', [], { maxResults: 2 });
+  expect(matches.length).toBe(1);
+  expect(matches[0]!.lines.length).toBe(2);
+});
