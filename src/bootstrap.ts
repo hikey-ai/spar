@@ -1,6 +1,6 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import os from "node:os";
+import * as fs from "node:fs/promises";
+import path from "path";
+import os from "os";
 
 type GitIdentity = {
   name?: string;
@@ -57,7 +57,7 @@ async function cleanDirectory(dir: string) {
   await ensureDir(dir);
   const entries = await fs.readdir(dir);
   await Promise.all(
-    entries.map(async (entry) => {
+    entries.map(async (entry: string) => {
       const entryPath = path.join(dir, entry);
       await fs.rm(entryPath, { recursive: true, force: true });
     }),
@@ -146,14 +146,9 @@ async function cloneTemplateIntoWorkspace(
     path.join(os.tmpdir(), "spar-template-"),
   );
   try {
-    const prep = await prepareClone(
-      templateRepo,
-      templateAuth,
-    );
+    const prep = await prepareClone(templateRepo, templateAuth);
     try {
-      const env = prep.env
-        ? { ...process.env, ...prep.env }
-        : undefined;
+      const env = mergeEnv(prep.env);
       const targetUrl = prep.url;
       const result = await runCommand(
         "git",
@@ -295,6 +290,24 @@ async function prepareClone(
       await cleanup();
     },
   };
+}
+
+function mergeEnv(
+  overrides?: Record<string, string>,
+): Record<string, string> | undefined {
+  if (!overrides) {
+    return undefined;
+  }
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+  for (const [key, value] of Object.entries(overrides)) {
+    result[key] = value;
+  }
+  return result;
 }
 
 async function createAskPassScript(token: string) {

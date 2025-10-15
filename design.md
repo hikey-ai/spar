@@ -2,11 +2,11 @@
 
 ## Overview
 **Project**: Spar API (Hono/Bun/TypeScript) – a secure API proxy enabling agentic coding tools to interact with codebases mounted directly in `/workspace`.  
-**Goal**: Provide a comprehensive API layer that proxies file operations, search, execution, version control, and LSP diagnostics to the mounted `/workspace` directory. This allows agents to analyze, edit, and build code in a sandboxed manner without direct host filesystem access beyond the mount. The API will be distributed as a standalone binary via `bun compile`, running on the host with `/workspace` mounted (e.g., via Docker volume or bind mount). LSP support focuses on diagnostics, definitions, and references for real-time code analysis. Initial focus on TypeScript/JavaScript; extensible to multi-language workflows.  
+**Goal**: Provide a comprehensive API layer that proxies file operations, search, execution, version control, workspace bootstrap, and LSP diagnostics to the mounted `/workspace` directory. This allows agents to analyze, edit, and build code in a sandboxed manner without direct host filesystem access beyond the mount. The API will be distributed as a standalone binary via `bun compile`, running on the host with `/workspace` mounted (e.g., via Docker volume or bind mount). LSP support focuses on diagnostics, definitions, and references for real-time code analysis. Initial focus on TypeScript/JavaScript; extensible to multi-language workflows.  
 **Scope**: Embed TypeScript Language Service for LSP; proxy file I/O, shell exec, git, and search via safe abstractions using Bun's APIs. Support stateless requests; avoid WebSockets—use polling for updates (e.g., agents periodically call diagnostics endpoint).  
 **Non-Goals**: Container orchestration or inter-container communication (direct mount access only); WebSocket/event bus (polling suffices; future if needed); multi-language LSP beyond TS/JS (phase 2); appending file writes.  
 **Assumptions**: `/workspace` is mounted at runtime (e.g., `docker run -v /host/code:/workspace ...`); API binary runs on host or in container with shared mount; Bun loads `.env` for config (e.g., `WORKSPACE_PATH=/workspace`). Agents authenticate via API keys. Binary built with `bun compile --target=bun index.ts --outfile=spar`.  
-**Security**: All operations sandboxed to `/workspace`; path validation prevents escapes; exec whitelisting; no direct shell access from agents. Rate-limiting and input sanitization enforced.  
+**Security**: All operations sandboxed to `/workspace`; path validation prevents escapes; exec whitelisting; no direct shell access from agents. Rate-limiting and input sanitization enforced. Spar does not connect to external object storage; orchestrators must stage archives/templates before invoking bootstrap.  
 
 ## Architecture
 - **Core Components**:
@@ -15,11 +15,12 @@
   - **File & Search Proxy** (`fs-proxy.ts`, `search-proxy.ts`): Safe I/O and pattern matching limited to `/workspace`. Uses `Bun.file` for reads/writes; glob/grep via Bun natives or lightweight libs.
   - **Execution Proxy** (`exec-proxy.ts`): Proxies shell commands directly in the host environment (cd to `/workspace` first). Captures stdout/stderr securely using `Bun.spawn`.
   - **Git Proxy** (`git-proxy.ts`): Wraps git commands through exec proxy, parsing outputs to JSON for agent consumption.
+  - **Bootstrap Handler** (`bootstrap.ts`): Handles `/internal/bootstrap`, restoring a staged archive (provided by orchestrator) or cloning a template repo with shallow history and reinitializing a local git baseline.
   - **API Layer** (Hono routes in `index.ts`): Exposes endpoints with middleware for auth/validation. Returns standardized JSON; errors as `{error: string, code: number}`.
   - **Real-Time Alternative**: No WebSockets; agents poll endpoints (e.g., `/proxy/lsp/diagnostics` for latest errors). Future event bus (e.g., in-memory pub/sub) if polling overhead becomes issue.
 
 - **Data Flow** (General Proxy Pattern):
-  1. Agent sends request (e.g., POST `/proxy/files/read` with `{paths: string[]}`).
+  1. Agent or orchestrator sends request (e.g., POST `/proxy/files/read` with `{paths: string[]}` or `/internal/bootstrap` with restore instructions).
   2. Proxy Layer: Authenticate; validate/sanitize (each path must resolve to `/workspace/*`); check mount health.
   3. Route to Module: E.g., for file read, use `Bun.file` on mounted paths.
   4. Execute & Respond: Capture results; proxy back as JSON. For LSP, init service with mount's tsconfig/files.
@@ -145,6 +146,10 @@
   Returns: `{status: 'ok', workspace: {exists: boolean, writable: boolean}}`  
   Description: Checks API and mount health.
 
+- **POST `/internal/bootstrap`** *(authenticated orchestrator endpoint)*  
+  Body: `{ mode: "restore" | "template", archivePath?: string, templateRepo?: string, gitIdentity?: {name?: string, email?: string}, templateAuth?: {type: "github_pat" | "basic", token: string, username?: string}, force?: boolean }`  
+  Returns: `{ status: "noop" | "restored" | "fresh", commitHash?: string, message: string }`  
+  Description: If `/workspace/.git` already exists (and `force` is not set) bootstrap no-ops. Otherwise, when `mode="restore"` Spar untars the archive previously staged by the orchestrator into `/workspace`. When `mode="template"`, Spar performs a shallow clone (`--depth 1`) of `templateRepo`, strips upstream `.git`, re-initializes the repo locally, and commits the baseline using provided git identity. Spar never fetches archives/templates from remote storage; callers must stage them before invoking this endpoint.
 All endpoints under `/proxy/` namespace for clarity. Enforce auth, rate-limits (100/min), and mount-specific timeouts.
 
 ## Implementation Details
@@ -155,6 +160,7 @@ All endpoints under `/proxy/` namespace for clarity. Enforce auth, rate-limits (
   - `src/search-proxy.ts`: Glob/grep via Bun or exec.
   - `src/exec-proxy.ts`: Command spawning with `/workspace` cwd.
   - `src/git-proxy.ts`: Git wrappers over exec-proxy.
+  - `src/bootstrap.ts`: Workspace bootstrap logic (restore/template) invoked via `/internal/bootstrap`.
   - `index.ts`: Hono app with `/proxy/*` routes and middleware.
   - `config.ts`: Load `.env` for mount details.
   - Update `tsconfig.json`: Add `"types": ["node"]`.

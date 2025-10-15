@@ -31,6 +31,17 @@ Spar is a lightweight, secure API proxy for agentic coding tools. It provides sa
 
 See [openapi.yaml](openapi.yaml) for full spec (use openapi-generator for clients). OpenAPI doc at /openapi.json.
 
+- **Bootstrap** (`POST /internal/bootstrap` – authenticated):
+  ```
+  {
+    "mode": "restore" | "template",
+    "archivePath": "/tmp/latest.tar.gz", // optional when restoring; path must already exist inside container
+    "templateRepo": "https://github.com/org/template.git", // required for template mode
+    "gitIdentity": { "name": "...", "email": "..." }, // optional
+    "templateAuth": { "type": "github_pat", "token": "...", "username": "..." } // optional
+  }
+  ```
+  Returns `{ status: "noop" | "restored" | "fresh", commitHash, message }`. Use this immediately after machine launch: if a workspace already exists, Spar no-ops; otherwise it either restores from the staged archive supplied by the orchestrator or clones the template repo (no full history – `--depth 1`).
 - **Health**: GET /proxy/health → {status: 'ok', workspace: {exists, writable}}.
 - **Files**:
   - POST /proxy/files/read {paths: string[]} → {files: [{path, content, error?}]} (batch read).
