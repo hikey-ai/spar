@@ -60,6 +60,7 @@ app.post('/internal/finalize', async (c: Context) => {
       hasChanges: result.hasChanges,
       commitHash: result.commitHash,
       runId: body.runId,
+      tarPath: result.tarPath
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Finalize failed'

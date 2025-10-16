@@ -16,7 +16,6 @@ export type FinalizeResponse = {
   hasChanges: boolean;
   commitHash?: string;
   tarPath?: string;
-  distFiles: string[];
 };
 
 const DEFAULT_COMMIT_MESSAGE =
@@ -111,8 +110,7 @@ export async function finalizeWorkspace(
 
   if (!hasChanges) {
     return {
-      hasChanges: false,
-      distFiles: [],
+      hasChanges: false
     };
   }
 
@@ -125,8 +123,7 @@ export async function finalizeWorkspace(
 
   if (!committed) {
     return {
-      hasChanges: false,
-      distFiles: [],
+      hasChanges: false
     };
   }
 
@@ -136,7 +133,6 @@ export async function finalizeWorkspace(
   return {
     hasChanges: true,
     commitHash,
-    tarPath,
-    distFiles: [],
+    tarPath
   };
 }
