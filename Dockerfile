@@ -3,7 +3,7 @@
 ############################
 # Builder: compile Spar binary with Bun
 ############################
-FROM oven/bun:1.1 AS builder
+FROM oven/bun:1.2.22 AS builder
 WORKDIR /app
 
 # Copy dependency manifests first for caching
