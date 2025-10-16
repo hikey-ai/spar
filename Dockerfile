@@ -23,7 +23,7 @@ FROM node:22-bookworm-slim AS runtime
 ENV PNPM_HOME=/usr/local/share/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV WORKSPACE_PATH=/workspace
-ENV PORT=3000
+ENV INTERNAL_PORT=3000
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -44,5 +44,6 @@ WORKDIR /workspace
 VOLUME ["/workspace"]
 
 EXPOSE 3000
+EXPOSE 5173
 
 ENTRYPOINT ["spar"]

@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import path from "path";
 import os from "os";
+import { Buffer } from "node:buffer";
 
 type GitIdentity = {
   name?: string;
@@ -23,6 +24,7 @@ type ClonePreparation = {
 export type BootstrapRequest = {
   mode: "restore" | "template";
   archivePath?: string;
+  archiveData?: string;
   templateRepo?: string;
   gitIdentity?: GitIdentity;
   templateAuth?: TemplateAuth;
@@ -198,51 +200,73 @@ export async function handleBootstrap(
   workspacePath: string,
   request: BootstrapRequest,
 ): Promise<BootstrapResponse> {
-  const gitDir = path.join(workspacePath, ".git");
-  const gitExists = await pathExists(gitDir);
-  if (gitExists && !request.force) {
-    const commitHash = await getCurrentCommit(workspacePath);
-    return {
-      status: "noop",
-      commitHash,
-      message: "Workspace already initialized; skipping bootstrap",
-    };
-  }
+  let tempArchive: string | undefined;
+  try {
+    if (request.archiveData) {
+      tempArchive = await writeArchiveFromData(request.archiveData);
+      request.archivePath = tempArchive;
+    }
+    const gitDir = path.join(workspacePath, ".git");
+    const gitExists = await pathExists(gitDir);
+    if (gitExists && !request.force) {
+      const commitHash = await getCurrentCommit(workspacePath);
+      return {
+        status: "noop",
+        commitHash,
+        message: "Workspace already initialized; skipping bootstrap",
+      };
+    }
 
-  if (request.mode === "restore" && request.archivePath) {
-    await restoreFromArchive(request.archivePath, workspacePath);
-    const commitHash = await getCurrentCommit(workspacePath);
-    return {
-      status: "restored",
-      commitHash,
-      message: "Workspace restored from archive",
-    };
-  }
+    if (request.mode === "restore" && request.archivePath) {
+      await restoreFromArchive(request.archivePath, workspacePath);
+      const commitHash = await getCurrentCommit(workspacePath);
+      return {
+        status: "restored",
+        commitHash,
+        message: "Workspace restored from archive",
+      };
+    }
 
-  if (request.mode === "template") {
-    await cloneTemplateIntoWorkspace(
-      request.templateRepo || "",
-      workspacePath,
-      request.gitIdentity,
-      request.templateAuth,
-    );
-    const commitHash = await getCurrentCommit(workspacePath);
-    return {
-      status: "fresh",
-      commitHash,
-      message: "Workspace bootstrapped from template",
-    };
-  }
+    if (request.mode === "template") {
+      await cloneTemplateIntoWorkspace(
+        request.templateRepo || "",
+        workspacePath,
+        request.gitIdentity,
+        request.templateAuth,
+      );
+      const commitHash = await getCurrentCommit(workspacePath);
+      return {
+        status: "fresh",
+        commitHash,
+        message: "Workspace bootstrapped from template",
+      };
+    }
 
-  if (request.mode === "restore" && !request.archivePath) {
+    if (request.mode === "restore" && !request.archivePath) {
+      throw new Error(
+        "archivePath is required when mode is 'restore'. Provide a staged archive or set mode='template'.",
+      );
+    }
+
     throw new Error(
-      "archivePath is required when mode is 'restore'. Provide a staged archive or set mode='template'.",
+      `Unsupported bootstrap request. mode=${request.mode}, archivePath=${request.archivePath}`,
     );
+  } finally {
+    if (tempArchive) {
+      await fs.rm(tempArchive, { force: true });
+    }
   }
+}
 
-  throw new Error(
-    `Unsupported bootstrap request. mode=${request.mode}, archivePath=${request.archivePath}`,
+async function writeArchiveFromData(data: string) {
+  const tmpDir = process.env.SPAR_TMP_DIR || os.tmpdir();
+  const archivePath = path.join(
+    tmpDir,
+    `spar-restore-${Date.now()}-${Math.random().toString(16).slice(2)}.tar.gz`,
   );
+  const buffer = Buffer.from(data, "base64");
+  await fs.writeFile(archivePath, buffer);
+  return archivePath;
 }
 
 async function prepareClone(

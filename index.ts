@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { Context, Next } from 'hono'
 import { handleRequest } from './src/proxy.js'
 import { handleBootstrap, type BootstrapRequest } from './src/bootstrap.js'
+import { finalizeWorkspace, type FinalizeRequest } from './src/finalize.js'
 import { startWatcher, getRecentChanges } from './src/watcher.js'
 import type { ApiTypes } from './src/types'
 
@@ -40,6 +41,28 @@ app.post('/internal/bootstrap', async (c: Context) => {
     return c.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Bootstrap failed'
+    return c.json({ error: message }, 500)
+  }
+})
+
+app.post('/internal/finalize', async (c: Context) => {
+  const base = process.env.WORKSPACE_PATH || '/workspace'
+  try {
+    const body = await c.req.json<
+      FinalizeRequest & { runId?: string }
+    >()
+    if (!body.runId) {
+      return c.json({ error: 'runId is required' }, 400)
+    }
+
+    const result = await finalizeWorkspace(base, body.runId, body)
+    return c.json({
+      hasChanges: result.hasChanges,
+      commitHash: result.commitHash,
+      runId: body.runId,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Finalize failed'
     return c.json({ error: message }, 500)
   }
 })
@@ -189,7 +212,7 @@ app.get('/proxy/events', async (c: Context) => {
 const base = process.env.WORKSPACE_PATH || '/workspace'
 startWatcher(base)
 
-const port = parseInt(process.env.PORT || '3000')
+const port = parseInt(process.env.INTERNAL_PORT || '3000')
 Bun.serve({
   fetch: app.fetch,
   port,

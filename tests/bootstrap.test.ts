@@ -1,5 +1,5 @@
 import { test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, rmSync, existsSync, writeFileSync } from "fs";
+import { mkdtempSync, rmSync, existsSync, writeFileSync, readFileSync } from "fs";
 import path from "path";
 import { tmpdir } from "os";
 import { handleBootstrap } from "../src/bootstrap.js";
@@ -126,6 +126,32 @@ test("bootstrap restores from archive", async () => {
   const result = await handleBootstrap(workspace, {
     mode: "restore",
     archivePath,
+  });
+
+  expect(result.status).toBe("restored");
+  expect(existsSync(path.join(workspace, "file.txt"))).toBeTrue();
+  expect(existsSync(path.join(workspace, ".git"))).toBeTrue();
+});
+
+test("bootstrap restores from archive data", async () => {
+  const sourceDir = tm.createDir("spar-archive-source-data-");
+  runOrFail("git", ["init"], sourceDir);
+  runOrFail("git", ["config", "user.email", "source@example.com"], sourceDir);
+  runOrFail("git", ["config", "user.name", "Source"], sourceDir);
+  writeFileSync(path.join(sourceDir, "file.txt"), "content-data");
+  runOrFail("git", ["add", "-A"], sourceDir);
+  runOrFail("git", ["commit", "-m", "Snapshot"], sourceDir);
+
+  const archivePath = path.join(tmpdir(), `spar-archive-data-${Date.now()}.tar.gz`);
+  runOrFail("tar", ["-czf", archivePath, "-C", sourceDir, "."], undefined);
+  tm.dirs.push(archivePath);
+
+  const archiveData = readFileSync(archivePath).toString("base64");
+
+  const workspace = tm.createDir("spar-restore-workspace-data-");
+  const result = await handleBootstrap(workspace, {
+    mode: "restore",
+    archiveData,
   });
 
   expect(result.status).toBe("restored");
