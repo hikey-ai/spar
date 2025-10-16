@@ -17,6 +17,7 @@
       "devDependencies": {
         "@types/bun": "latest",
         "@types/node": "^24.5.2",
+        "openapi3-ts": "^4.3.2",
         "vscode-languageserver-types": "^3.17.5",
       },
       "peerDependencies": {

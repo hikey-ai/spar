@@ -2,7 +2,8 @@ openapi: 3.0.0
 info:
   title: Spar API Proxy
   version: 1.0.0
-  description: Secure API proxy for agentic coding tools to interact with mounted /workspace codebase.
+  description: Secure API proxy for agentic coding tools to interact with mounted
+    /workspace codebase.
 servers:
   - url: http://localhost:3000
     description: Local server
@@ -57,7 +58,7 @@ paths:
                   type: boolean
                   description: Force bootstrap even if workspace contains files
       responses:
-        '200':
+        "200":
           description: Bootstrap result
           content:
             application/json:
@@ -78,9 +79,9 @@ paths:
                   commitHash:
                     type: string
                     nullable: true
-        '400':
+        "400":
           description: Invalid request
-        '500':
+        "500":
           description: Bootstrap failed
   /internal/finalize:
     post:
@@ -109,7 +110,7 @@ paths:
                 distPath:
                   type: string
       responses:
-        '200':
+        "200":
           description: Finalize result
           content:
             application/json:
@@ -130,15 +131,15 @@ paths:
                     type: array
                     items:
                       type: string
-        '400':
+        "400":
           description: Invalid request
-        '500':
+        "500":
           description: Finalize failed
   /proxy/health:
     get:
       summary: Health check
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -169,7 +170,7 @@ paths:
                   items:
                     type: string
       responses:
-        '200':
+        "200":
           description: Files read
           content:
             application/json:
@@ -202,7 +203,7 @@ paths:
                 content:
                   type: string
       responses:
-        '200':
+        "200":
           description: Success
           content:
             application/json:
@@ -223,7 +224,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Success
           content:
             application/json:
@@ -257,7 +258,7 @@ paths:
             type: string
             description: Comma-separated glob patterns to ignore
       responses:
-        '200':
+        "200":
           description: Directory listing
           content:
             application/json:
@@ -291,7 +292,7 @@ paths:
                   items:
                     type: string
       responses:
-        '200':
+        "200":
           description: Matches
           content:
             application/json:
@@ -331,7 +332,7 @@ paths:
                 maxResults:
                   type: number
       responses:
-        '200':
+        "200":
           description: Matches
           content:
             application/json:
@@ -373,7 +374,7 @@ paths:
                 timeout:
                   type: number
       responses:
-        '200':
+        "200":
           description: Job started
           content:
             application/json:
@@ -392,7 +393,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Status
           content:
             application/json:
@@ -421,7 +422,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Job stopped
           content:
             application/json:
@@ -445,7 +446,7 @@ paths:
                 timeout:
                   type: number
       responses:
-        '200':
+        "200":
           description: Result
           content:
             application/json:
@@ -464,7 +465,7 @@ paths:
     get:
       summary: Git status
       responses:
-        '200':
+        "200":
           description: Status
           content:
             application/json:
@@ -506,7 +507,7 @@ paths:
                 path:
                   type: string
       responses:
-        '200':
+        "200":
           description: Diff
           content:
             application/json:
@@ -539,7 +540,7 @@ paths:
                 all:
                   type: boolean
       responses:
-        '200':
+        "200":
           description: Commit result
           content:
             application/json:
@@ -560,7 +561,7 @@ paths:
             type: number
             default: 10
       responses:
-        '200':
+        "200":
           description: Log
           content:
             application/json:
@@ -595,7 +596,7 @@ paths:
                 content:
                   type: string
       responses:
-        '200':
+        "200":
           description: Diagnostics
           content:
             application/json:
@@ -649,7 +650,7 @@ paths:
                 content:
                   type: string
       responses:
-        '200':
+        "200":
           description: Locations
           content:
             application/json:
@@ -699,7 +700,7 @@ paths:
                 content:
                   type: string
       responses:
-        '200':
+        "200":
           description: References
           content:
             application/json:
@@ -739,7 +740,7 @@ paths:
           schema:
             type: number
       responses:
-        '200':
+        "200":
           description: Changes
           content:
             application/json:
