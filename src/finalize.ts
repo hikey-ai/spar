@@ -90,7 +90,7 @@ async function createTarball(
   const tarPath = path.join(tmpDir, `spar-run-${runId}.tar.gz`);
   const result = await runCommand(
     "tar",
-    ["-czf", tarPath, "-C", workspacePath, "."],
+    ["-czf", tarPath, "--exclude=node_modules", "-C", workspacePath, "."],
   );
   if (result.exitCode !== 0) {
     throw new Error(

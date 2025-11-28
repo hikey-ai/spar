@@ -5,6 +5,8 @@ import { handleBootstrap, type BootstrapRequest } from './src/bootstrap.js'
 import { finalizeWorkspace, type FinalizeRequest } from './src/finalize.js'
 import { startWatcher, getRecentChanges } from './src/watcher.js'
 import type { ApiTypes } from './src/types'
+import path from 'node:path'
+import { stat } from 'node:fs/promises'
 
 const app = new Hono()
 
@@ -60,10 +62,48 @@ app.post('/internal/finalize', async (c: Context) => {
       hasChanges: result.hasChanges,
       commitHash: result.commitHash,
       runId: body.runId,
-      tarPath: result.tarPath
+      tarPath: result.tarPath,
+      distFiles: result.distFiles,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Finalize failed'
+    return c.json({ error: message }, 500)
+  }
+})
+
+app.post('/internal/files/download', async (c: Context) => {
+  const base = process.env.WORKSPACE_PATH || '/workspace'
+  const tmpDir = process.env.SPAR_TMP_DIR || '/tmp'
+  try {
+    const body = await c.req.json<{ path?: string }>()
+    const targetPath = body?.path
+    if (!targetPath) {
+      return c.json({ error: 'path is required' }, 400)
+    }
+
+    const resolved = path.isAbsolute(targetPath)
+      ? path.resolve(targetPath)
+      : path.resolve(base, targetPath)
+
+    if (!resolved.startsWith(base) && !resolved.startsWith(tmpDir)) {
+      return c.json({ error: 'Invalid path' }, 400)
+    }
+
+    const file = Bun.file(resolved)
+    if (!(await file.exists())) {
+      return c.json({ error: 'Not found' }, 404)
+    }
+
+    const info = await stat(resolved)
+    return new Response(file.stream(), {
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': info.size.toString(),
+        'Content-Disposition': `attachment; filename="${path.basename(resolved)}"`,
+      },
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'File download failed'
     return c.json({ error: message }, 500)
   }
 })
